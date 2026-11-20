@@ -18,4 +18,3 @@ export default defineConfig({
 
   plugins: [react()],
 
-  base: '/Smart-Lab-AI-xoosh280/',
