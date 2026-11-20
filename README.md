@@ -1,37 +1,49 @@
-SMART LAB AI
+# SMART LAB AI
 
-Hospital Biomedical & Laboratory Equipment Management System
+Responsive biomedical engineering and hospital equipment management frontend built with React and Vite.
 
-SMART LAB AI is a multi-hospital platform designed to help hospitals manage medical equipment, laboratory instruments, maintenance, calibration and biomedical engineering services.
+## Run locally
 
-Main Features
+Requirements: Node.js 20.19+ or 22.12+ and npm.
 
-1. Hospital Registration
-2. African Country Management
-3. Equipment Inventory
-4. Preventive Maintenance
-5. Calibration Management
-6. Equipment Troubleshooting
-7. AI Laboratory Assistant
-8. Reports and Analytics
-9. User Management and Security
+```bash
+npm install
+npm run dev
+```
 
-Equipment Categories
+Open the local URL printed by Vite (normally `http://localhost:5173`). To create and preview a production build:
 
-* Laboratory equipment
-* ECG machines
-* CT scanners
-* MRI and MRA systems
-* X-ray machines
-* Ultrasound machines
-* Ventilators
-* Dialysis machines
-* Anaesthesia machines
+```bash
+npm run build
+npm run preview
+```
 
-Initial Countries
+## Included modules
 
-Somalia, Ethiopia, Kenya and all other African countries.
+- Responsive biomedical operations dashboard
+- Laboratory, hospital, and medical imaging equipment inventories
+- Preventive maintenance scheduling
+- Calibration records
+- Corrective repair history
+- Spare parts inventory and low-stock indicators
+- AI troubleshooting interface with general, safety-oriented demonstration guidance
+- Technical reports with equipment CSV export
+- Searchable tables and add-record forms
+- Responsive mobile navigation
 
-Project Vision
+## Demonstration data and persistence
 
-To improve hospital equipment management and support biomedical engineering services across Africa.
+The initial records are **demonstration data**, not real hospital data. The dashboard identifies them as sample records. Use **Reset demo data** at the bottom of the app to restore the original examples. New records and changes are saved to the current browser using `localStorage` and remain on that browser/device. This is a frontend persistence layer only; it is not shared across users or devices and is not a production database or backup. Do not store patient-identifiable or sensitive clinical information in this demo.
+
+The troubleshooting view uses local example guidance; it does not connect to a generative AI service or replace manufacturer documentation or qualified technical judgment.
+
+## Architecture
+
+- `src/App.jsx` — reusable layout, tables, forms, module pages, local persistence, assistant, and reports
+- `src/data.js` — navigation and clearly identified sample dataset
+- `src/styles.css` — responsive application styling
+- `src/main.jsx` — React entry point
+
+## Production considerations
+
+This repository currently provides the frontend only. A production deployment should add a secured API and database, user authentication/authorization, audit logging, backups, and appropriate privacy/security controls before storing operational or patient-related data.
