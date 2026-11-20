@@ -32,9 +32,8 @@ function RecordForm({ kind, onSubmit, onCancel, equipment, initialValues = {} })
     repairs: [['equipment','Equipment','select',true,equipment.map(e => e.name)],['issue','Fault / repair description','text',true],['opened','Date opened','date',true],['technician','Technician','text',true],['status','Status','select',true,['Open','In progress','Completed']],['parts','Parts used','text',false]],
     spares: [['name','Part name','text',true],['category','Category','text',true],['stock','Quantity in stock','number',true],['minimum','Reorder threshold','number',true],['location','Storage location','text',false],['unit','Unit','text',false]],
   };
-  const fields = schemas[kind];
-  return <form className="record-form" onSubmit={e => { e.preventDefault(); const values = Object.fromEntries(new FormData(e.currentTarget)); onSubmit(values); }}>
-    <div className="form-grid">{fields.map(([name,label,type,required,options]) => <label className={type === 'text' && name === 'issue' ? 'full' : ''} key={name}>{label}{type === 'select' ? <select name={name} required={required} defaultValue={initialValues[name] || ''}><option value="" disabled>Select {label.toLowerCase()}</option>{options.map(o => <option key={o}>{o}</option>)}</select> : <input name={name} type={type} required={required} min={type === 'number' ? 0 : undefined} defaultValue={initialValues[name] ?? (type === 'date' ? today : '')} placeholder={type === 'text' ? `Enter ${label.toLowerCase()}` : undefined} />}</label>)}</div>
+  return <form className="record-form" onSubmit={e => { e.preventDefault(); onSubmit(Object.fromEntries(new FormData(e.currentTarget))); }}>
+    <div className="form-grid">{schemas[kind].map(([name,label,type,required,options]) => <label className={name === 'issue' ? 'full' : ''} key={name}>{label}{type === 'select' ? <select name={name} required={required} defaultValue={initialValues[name] || ''}><option value="" disabled>Select {label.toLowerCase()}</option>{options.map(o => <option key={o}>{o}</option>)}</select> : <input name={name} type={type} required={required} min={type === 'number' ? 0 : undefined} defaultValue={initialValues[name] ?? (type === 'date' ? today : '')} placeholder={type === 'text' ? `Enter ${label.toLowerCase()}` : undefined} />}</label>)}</div>
     <div className="form-actions"><button type="button" className="button secondary" onClick={onCancel}>Cancel</button><button className="button primary" type="submit">Save record</button></div>
   </form>;
 }
@@ -58,14 +57,13 @@ function Dashboard({ data, setPage }) {
 
 function InventoryPage({ page, data, onAdd, onEdit, onDelete }) {
   const meta = pageMeta[page]; const [search, setSearch] = useState('');
-  if (page === 'laboratory' || page === 'hospital' || page === 'imaging') {
+  if (['laboratory','hospital','imaging'].includes(page)) {
     const rows = data.equipment.filter(e=>e.category===meta.category && Object.values(e).join(' ').toLowerCase().includes(search.toLowerCase()));
     const columns = [{key:'id',label:'Asset ID',render:v=><span className="id-text">{v}</span>},{key:'name',label:'Equipment',render:(v,r)=><div className="asset-cell"><span className="asset-icon">{meta.category==='Imaging'?'▣':meta.category==='Laboratory'?'⚗':'✚'}</span><div><strong>{v}</strong><small>{r.model}</small></div></div>},{key:'manufacturer',label:'Manufacturer'},{key:'location',label:'Location'},{key:'lastService',label:'Last service'},{key:'status',label:'Status',render:v=><Status value={v}/>},{key:'actions',label:'Actions',render:(_,r)=><div className="record-actions"><button className="text-button" onClick={()=>onEdit(r)} aria-label={`Edit ${r.name}`}>Edit</button><button className="text-button danger-button" onClick={()=>onDelete(r)} aria-label={`Delete ${r.name}`}>Delete</button></div>}];
     return <><PageHeader meta={meta} action={()=>onAdd('equipment')} actionLabel="Add equipment"/><div className="filter-row"><div className="search-box"><Icon>⌕</Icon><input aria-label="Search equipment" placeholder="Search by name, asset ID, model…" value={search} onChange={e=>setSearch(e.target.value)}/></div><span className="result-count">{rows.length} assets</span></div><section className="panel page-table"><DataTable columns={columns} rows={rows}/></section></>;
   }
-  const key = meta.dataKey;
-  const rows = data[key].filter(r=>Object.values(r).join(' ').toLowerCase().includes(search.toLowerCase()));
-  const configs = {
+  const key=meta.dataKey; const rows=data[key].filter(r=>Object.values(r).join(' ').toLowerCase().includes(search.toLowerCase()));
+  const configs={
     maintenance:[{key:'id',label:'Work order',render:v=><span className="id-text">{v}</span>},{key:'equipment',label:'Equipment',render:(v,r)=><div className="asset-cell"><span className="asset-icon">⚙</span><div><strong>{v}</strong><small>{r.assetId}</small></div></div>},{key:'type',label:'Service type'},{key:'dueDate',label:'Due date'},{key:'assigned',label:'Assigned to'},{key:'priority',label:'Priority',render:v=><Status value={v}/>},{key:'status',label:'Status',render:v=><Status value={v}/> }],
     calibration:[{key:'id',label:'Record ID',render:v=><span className="id-text">{v}</span>},{key:'equipment',label:'Equipment',render:(v,r)=><div className="asset-cell"><span className="asset-icon">⊙</span><div><strong>{v}</strong><small>{r.assetId}</small></div></div>},{key:'standard',label:'Reference standard'},{key:'dueDate',label:'Due date'},{key:'technician',label:'Technician'},{key:'result',label:'Result',render:v=><Status value={v}/> }],
     repairs:[{key:'id',label:'Work order',render:v=><span className="id-text">{v}</span>},{key:'equipment',label:'Equipment',render:(v,r)=><div className="asset-cell"><span className="asset-icon">⌁</span><div><strong>{v}</strong><small>{r.assetId}</small></div></div>},{key:'issue',label:'Fault / repair'},{key:'opened',label:'Date opened'},{key:'technician',label:'Technician'},{key:'parts',label:'Parts used'},{key:'status',label:'Status',render:v=><Status value={v}/> }],
@@ -95,28 +93,31 @@ function ReportsPage({ data }) {
 
 export default function App() {
   const [loaded] = useState(() => loadAppData());
-  const [data,setData]=useState(loaded.data);
-  const [deletedIds,setDeletedIds]=useState(loaded.deletedIds);
-  const [page,setPage]=useState('dashboard');
-  const [modal,setModal]=useState('');
-  const [editingEquipment,setEditingEquipment]=useState(null);
-  const [mobileOpen,setMobileOpen]=useState(false);
-  const [toast,setToast]=useState(loaded.warning ? {type:'error',message:loaded.warning} : null);
+  const [data,setData] = useState(loaded.data);
+  const [deletedIds,setDeletedIds] = useState(loaded.deletedIds);
+  const [page,setPage] = useState('dashboard');
+  const [modal,setModal] = useState('');
+  const [editingEquipment,setEditingEquipment] = useState(null);
+  const [mobileOpen,setMobileOpen] = useState(false);
+  const [toast,setToast] = useState(loaded.warning ? {type:'error',message:loaded.warning} : null);
   const active = useMemo(()=>navigation.flatMap(s=>s.items).find(i=>i.id===page),[page]);
+
   useEffect(()=>{
-    const result=saveAppData(data,deletedIds);
-    if(!result.ok) setToast({type:'error',message:result.message});
+    const result = saveAppData(data, deletedIds);
+    if (!result.ok) setToast({type:'error',message:result.message});
   },[data,deletedIds]);
-  const notify=(message,type='success')=>{setToast({type,message});window.setTimeout(()=>setToast(current=>current?.message===message?null:current),4000);};
+
+  const notify=(message,type='success')=>{
+    setToast({type,message});
+    window.setTimeout(()=>setToast(current=>current?.message===message?null:current),4000);
+  };
   const addRecord=(kind,values)=>{
-    const idPrefix={equipment:'EQ',maintenance:'PM',calibration:'CAL',repairs:'WO',spares:'SP'}[kind];
-    const record={...values,id:`${idPrefix}-${Date.now()}`};
+    const prefix={equipment:'EQ',maintenance:'PM',calibration:'CAL',repairs:'WO',spares:'SP'}[kind];
+    const record={...values,id:`${prefix}-${Date.now()}`};
     if(kind==='equipment') record.lastService='Not recorded';
-    if(kind==='maintenance'||kind==='calibration'||kind==='repairs') record.assetId=data.equipment.find(e=>e.name===values.equipment)?.id||'—';
+    if(['maintenance','calibration','repairs'].includes(kind)) record.assetId=data.equipment.find(e=>e.name===values.equipment)?.id||'—';
     if(kind==='spares'){record.stock=Number(values.stock);record.minimum=Number(values.minimum);record.unit=values.unit||'pcs';}
-    setData(prev=>({...prev,[kind]:[record,...prev[kind]]}));
-    setModal('');
-    notify('Record added successfully.');
+    setData(prev=>({...prev,[kind]:[record,...prev[kind]]}));setModal('');notify('Record added successfully.');
   };
   const updateEquipment=values=>{
     setData(prev=>({...prev,equipment:prev.equipment.map(record=>record.id===editingEquipment.id?{...record,...values}:record)}));
@@ -129,8 +130,13 @@ export default function App() {
     notify('Equipment record deleted successfully.');
   };
   const changePage=id=>{setPage(id);setMobileOpen(false);};
-  const clearDemo=()=>{if(window.confirm('Reset all records to the original demonstration data? This removes changes saved in this browser.')){setData(Object.fromEntries(Object.keys(initialData).map(key=>[key,initialData[key].map(record=>({...record}))])));setDeletedIds([]);notify('Demonstration data restored.');}};
+  const clearDemo=()=>{
+    if(!window.confirm('Reset all records to the original demonstration data? This removes changes saved in this browser.')) return;
+    setData(Object.fromEntries(Object.keys(initialData).map(key=>[key,initialData[key].map(record=>({...record}))])));
+    setDeletedIds([]);notify('Demonstration data restored.');
+  };
   const closeModal=()=>{setModal('');setEditingEquipment(null);};
+
   return <div className="app-shell"><aside className={`sidebar ${mobileOpen?'open':''}`}><div className="brand"><BrandMark/><div><strong>SMART LAB <span>AI</span></strong><small>BIOMEDICAL OPERATIONS</small></div><button className="mobile-close" onClick={()=>setMobileOpen(false)} aria-label="Close navigation">×</button></div><div className="workspace"><div className="hospital-avatar">NH</div><div><strong>Northside General</strong><small>Engineering department</small></div><span className="chevron">⌄</span></div><nav>{navigation.map(group=><div className="nav-group" key={group.section}><span className="nav-label">{group.section}</span>{group.items.map(item=><button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>changePage(item.id)}><Icon>{item.icon}</Icon><span>{item.label}</span>{item.badge&&<b className="nav-badge">{item.badge}</b>}</button>)}</div>)}</nav><div className="sidebar-bottom"><div className="help-box"><span>✧</span><strong>Need a hand?</strong><small>Open the AI assistant for technical guidance.</small><button onClick={()=>changePage('assistant')}>Ask assistant <span>→</span></button></div><div className="profile"><div className="profile-avatar">AH</div><div><strong>Ahmed Hassan</strong><small>Biomedical engineer</small></div><button aria-label="Profile options">···</button></div></div></aside>
     {mobileOpen&&<button aria-label="Close menu overlay" className="sidebar-overlay" onClick={()=>setMobileOpen(false)}/>}
     <main className="main-area"><header className="topbar"><button className="menu-toggle" onClick={()=>setMobileOpen(true)} aria-label="Open navigation">☰</button><div className="breadcrumb">Workspace <span>/</span> <strong>{active?.label||'Dashboard'}</strong></div><div className="top-actions"><div className="global-search"><Icon>⌕</Icon><input placeholder="Search assets, work orders…" onKeyDown={e=>{if(e.key==='Enter'){setPage('laboratory');document.querySelector('.filter-row input')?.focus();}}}/><kbd>⌘ K</kbd></div><button className="top-icon" aria-label="Notifications" onClick={()=>changePage('maintenance')}>♧<i/></button><div className="top-profile">AH</div></div></header><div className="content"><div className="mobile-demo"><span>Demo data</span><button onClick={clearDemo}>Reset</button></div>{page==='dashboard'?<Dashboard data={data} setPage={changePage}/>:pageMeta[page]?<InventoryPage page={page} data={data} onAdd={kind=>setModal(kind)} onEdit={record=>{setEditingEquipment(record);setModal('equipment-edit');}} onDelete={deleteEquipment}/>:page==='assistant'?<AssistantPage/>:<ReportsPage data={data}/>}<footer className="footer"><span>© 2025 SMART LAB AI</span><span>Biomedical equipment management · <button onClick={clearDemo}>Reset demo data</button></span></footer></div></main>
